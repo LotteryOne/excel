@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+targetNamespace="http://www.wondersgroup.com/schema/tool"
+xmlns:tns="http://www.wondersgroup.com/schema/tool"
+elementFormDefault="qualified">
+
+	<element name="xml">
+		<complexType>
+			<attribute name="id" type="string"></attribute>
+			<attribute name="index" type="integer" />
+			<attribute name="path" type="string"/>
+			<attribute name="splitLine" type="integer"></attribute>
+		</complexType>
+	</element>
+
+</schema>
