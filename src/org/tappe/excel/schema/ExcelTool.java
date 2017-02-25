@@ -28,7 +28,6 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Component;
 
- 
 @Component
 public class ExcelTool {
 
@@ -84,6 +83,7 @@ public class ExcelTool {
 	}
 
 	private void init(Object title, List<?> data, ToolXmlBean bean) {
+		long st1 = System.currentTimeMillis();
 
 		try {
 			InputStream stream = this.getClass().getClassLoader().getResourceAsStream(bean.getPath());
@@ -92,6 +92,8 @@ public class ExcelTool {
 			logger.error(e1.getMessage() + "\t" + e1.getCause());
 			e1.printStackTrace();
 		}
+		long st2 = System.currentTimeMillis();
+		System.out.println((st2 - st1) + "ms ::: init time");
 
 		if (title != null) {
 			Field[] fieldTiles = title.getClass().getDeclaredFields();
@@ -129,6 +131,30 @@ public class ExcelTool {
 
 		Class<?> getClass = method.getReturnType();
 
+		if (String.class.equals(getClass)) {
+			return (String) obj;
+		}
+		if (Long.class.equals(getClass) || Integer.class.equals(getClass) || Boolean.class.equals(getClass)) {
+			return obj.toString();
+		}
+		if (Double.class.equals(getClass)) {
+			return convertDouble((Double) obj).toString();
+		}
+		if (Date.class.equals(getClass)) {
+			return sdf.format(obj);
+		} else {
+			return obj + blank;
+		}
+
+	}
+
+	private String valueToString(Object obj) {
+
+		if (obj == null) {
+			return blank;
+		}
+
+		Class<?> getClass = obj.getClass();
 		if (String.class.equals(getClass)) {
 			return (String) obj;
 		}
@@ -186,6 +212,7 @@ public class ExcelTool {
 	}
 
 	private void setData(Object title, List<?> data, ToolXmlBean bean) {
+		long st1 = System.currentTimeMillis();
 		if (bean == null || bean.getPath() == null)
 			return;
 
@@ -232,6 +259,8 @@ public class ExcelTool {
 			}
 
 		}
+		long st2 = System.currentTimeMillis();
+		System.out.println((st2 - st1) + "ms :::: setData time!!!");
 
 	}
 
@@ -248,6 +277,82 @@ public class ExcelTool {
 			cell.setCellValue(newValue);
 		}
 
+	}
+
+	public void exportByMap(Object title, List<Map<?, ?>> data, int index, HttpServletResponse response)
+			throws IOException {
+
+		ToolXmlBean bean = template.get(index);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		try {
+			Long initTime = System.currentTimeMillis();
+			init(title, data, bean);
+			setMapData(title, data, bean);
+			book.write(os);
+			Long endTime = System.currentTimeMillis();
+			logger.info("export excel in " + (df.format((endTime - initTime) * 1.0 / 1000)) + " S ");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		response.setContentLength(os.size());
+		response.setCharacterEncoding(stringCode);
+		response.setContentType("multipart/form-data");
+		response.setHeader("Content-Disposition",
+				"attachment;fileName=" + URLEncoder.encode(bean.getFileName(), stringCode));
+		OutputStream outputStream = response.getOutputStream();
+		outputStream.write(os.toByteArray());
+		outputStream.close();
+	}
+
+	private void setMapData(Object title, List<Map<?, ?>> data, ToolXmlBean bean) {
+		long st1 = System.currentTimeMillis();
+		if (bean == null || bean.getPath() == null)
+			return;
+
+		int line = bean.getSplitLine();
+		Sheet sheet = book.getSheetAt(0);
+		// setTitle
+		for (int i = 0; i < line; i++) {
+			Row row = sheet.getRow(i);
+			for (int j = 0; j < row.getLastCellNum(); j++) {
+				Cell cell = row.getCell(j);
+				if (cell != null) {
+					replaceValue(cell);
+				}
+			}
+		}
+
+		// setBody
+		if (data != null && data.size() > 0) {
+
+			Field[] fields = data.get(0).getClass().getDeclaredFields();
+			Map<String, Method> fieldMap = new HashMap<String, Method>();
+			try {
+//				for (Field field : fields) {
+//					PropertyDescriptor pd = new PropertyDescriptor(field.getName(), data.get(0).getClass());
+//					fieldMap.put(field.getName(), pd.getReadMethod());
+//
+//				}
+				for (int i = line; i < data.size() + line; i++) {
+					Row row = sheet.createRow(i);
+					Map<?, ?> rowsData = data.get(i-line);
+					for (Integer index : bodyMap.keySet()) {
+						Cell cell = row.createCell(index);
+						String fieldName = (String) bodyMap.get(index);
+						Object value = rowsData.get(fieldName);
+						String stringValue = valueToString(value);
+						cell.setCellValue(stringValue);
+						cell.setCellStyle(cellStyle);
+
+					}
+				}
+			} catch (Exception e) {
+				logger.error(e.getMessage());
+			}
+
+		}
+		long st2 = System.currentTimeMillis();
+		System.out.println((st2 - st1) + "ms :::: setData time!!!");
 	}
 
 	public void export(Object title, List<?> data, int index, HttpServletResponse response) throws IOException {
