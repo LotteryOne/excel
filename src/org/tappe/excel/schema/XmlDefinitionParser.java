@@ -1,5 +1,6 @@
 package org.tappe.excel.schema;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -26,6 +27,7 @@ public class XmlDefinitionParser extends AbstractSingleBeanDefinitionParser {
 	private static final String PropertyFileName = "fileName";
 	private static final String PropertyId = "id";
 	private static final String PropertyPath = "path";
+	private static final String PropertyByte = "excelModel";
 
 	@Override
 	protected Class<?> getBeanClass(Element element) {
@@ -57,9 +59,29 @@ public class XmlDefinitionParser extends AbstractSingleBeanDefinitionParser {
 
 		if (StringUtils.hasText(valuePath)) {
 			String valueFileName = valuePath.substring(valuePath.lastIndexOf("/") + 1);
+
+			InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(valuePath);
+			ByteArrayOutputStream swapStream = new ByteArrayOutputStream();
+			byte[] buff = new byte[100];
+			int rc = 0;
+			try {
+				while ((rc = inputStream.read(buff, 0, 100)) > 0) {
+					swapStream.write(buff, 0, rc);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			byte[] in2b = swapStream.toByteArray();
+			try {
+				inputStream.close();
+				swapStream.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			builder.addPropertyValue(PropertyByte, in2b);
 			builder.addPropertyValue(PropertyFileName, valueFileName);
 			builder.addPropertyValue(PropertyPath, valuePath);
-			
+
 		}
 
 	}
@@ -70,7 +92,7 @@ public class XmlDefinitionParser extends AbstractSingleBeanDefinitionParser {
 		if (StringUtils.hasText(templateExcelFilePath)) {
 			InputStream inputStream = null;
 			try {
-				inputStream=this.getClass().getClassLoader().getResourceAsStream(templateExcelFilePath);
+				inputStream = this.getClass().getClassLoader().getResourceAsStream(templateExcelFilePath);
 				Workbook templateBook = WorkbookFactory.create(inputStream);
 				logger.info("load excel model: " + templateExcelFilePath);
 
@@ -82,7 +104,7 @@ public class XmlDefinitionParser extends AbstractSingleBeanDefinitionParser {
 				if (inputStream != null) {
 					try {
 						Long endTime = System.currentTimeMillis();
-						System.out.println(endTime - initStart+">>>>>");
+						System.out.println(endTime - initStart + ">>>>>");
 						inputStream.close();
 					} catch (IOException e) {
 						e.printStackTrace();
