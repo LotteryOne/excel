@@ -1,9 +1,9 @@
 package org.tappe.excel.schema;
 
 import java.beans.PropertyDescriptor;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -71,6 +71,7 @@ public class ExcelTool {
 		ToolXmlBean bean = template.get(index);
 
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
+
 		try {
 			init(title, data, bean);
 			setData(title, data, bean);
@@ -84,13 +85,21 @@ public class ExcelTool {
 
 	private void init(Object title, List<?> data, ToolXmlBean bean) {
 		long st1 = System.currentTimeMillis();
-
+		ByteArrayInputStream stream = null;
 		try {
-			InputStream stream = this.getClass().getClassLoader().getResourceAsStream(bean.getPath());
+			stream = new ByteArrayInputStream(bean.getExcelModel());
 			book = WorkbookFactory.create(stream);
+
 		} catch (Exception e1) {
 			logger.error(e1.getMessage() + "\t" + e1.getCause());
 			e1.printStackTrace();
+		} finally {
+			if (stream != null)
+				try {
+					stream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 		}
 		long st2 = System.currentTimeMillis();
 		System.out.println((st2 - st1) + "ms ::: init time");
@@ -328,14 +337,15 @@ public class ExcelTool {
 			Field[] fields = data.get(0).getClass().getDeclaredFields();
 			Map<String, Method> fieldMap = new HashMap<String, Method>();
 			try {
-//				for (Field field : fields) {
-//					PropertyDescriptor pd = new PropertyDescriptor(field.getName(), data.get(0).getClass());
-//					fieldMap.put(field.getName(), pd.getReadMethod());
-//
-//				}
+				// for (Field field : fields) {
+				// PropertyDescriptor pd = new
+				// PropertyDescriptor(field.getName(), data.get(0).getClass());
+				// fieldMap.put(field.getName(), pd.getReadMethod());
+				//
+				// }
 				for (int i = line; i < data.size() + line; i++) {
 					Row row = sheet.createRow(i);
-					Map<?, ?> rowsData = data.get(i-line);
+					Map<?, ?> rowsData = data.get(i - line);
 					for (Integer index : bodyMap.keySet()) {
 						Cell cell = row.createCell(index);
 						String fieldName = (String) bodyMap.get(index);
